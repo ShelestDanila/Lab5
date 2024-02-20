@@ -15,11 +15,17 @@
     </header>
     <main>
         <div class="container">
-            <form class="search-form">
-                <input type="text" class="search-field">
-                <button type="submit" class="search-btn">Найти</button>
-                <ul class="suggestions" style="display: none;"></ul>
-            </form>
+            <div class="search-form">
+                <div class="search-field-container">
+                    <div class="search-field-fallout">
+                        <input type="text" class="search-field">
+                        <div class="search-suggestion-container" data-url="http://cat-facts-api.std-900.ist.mospolytech.ru/autocomplete">
+                        </div>
+                    </div>
+                </div>
+                <!-- <input type="text" class="search-field"> -->
+                <button class="search-btn">Найти</button>
+            </div>
             <div class="pagination-info">
                 <span>
                     Показывать по
@@ -56,7 +62,7 @@
             </div>
             <div class="pagination">
                 <!-- <button class="btn first-page-btn" data-page="1">Первая страница</button>
-                <div class="pages-btn">
+                <div class="pages-btn">facts-list
                     <button class="btn active" data-page="1">1</button>
                     <button class="btn" data-page="2">2</button>
                     <button class="btn" data-page="3">3</button>
