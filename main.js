@@ -1,3 +1,5 @@
+let updateSuggestion = null;
+
 function createAuthorElement(record) {
     let user = record.user || { 'name': { 'first': '', 'last': '' } };
     let authorElement = document.createElement('div');
@@ -98,43 +100,53 @@ function downloadData(page = 1, query = '') {
     let factsList = document.querySelector('.facts-list');
     let url = new URL(factsList.dataset.url);
     let perPage = document.querySelector('.per-page-btn').value;
-
-    url.searchParams.set('page', page);
-    url.searchParams.set('per-page', perPage);
-    if (query) {
-        url.searchParams.set('q', query);
+    url.searchParams.append('page', page);
+    url.searchParams.append('per-page', perPage);
+    if (query != '') {
+        url.searchParams.append('q', query);
     }
+    let xhr = new XMLHttpRequest();
+    xhr.open('GET', url);
+    xhr.responseType = 'json';
+    xhr.onload = function () {
+        // Обновите данные на странице без перезагрузки
+        renderRecords(this.response.records);
+        setPaginationInfo(this.response['_pagination']);
+        renderPaginationElement(this.response['_pagination']);
+    };
+    xhr.send();
+}
+
+function getSuggesntions(query) {
+    let suggestionList = document.querySelector('.search-suggestion-container');
+    if (query == '') {
+        suggestionList.innerHTML = '';
+        return;
+    }
+    let url = new URL(suggestionList.dataset.url);
+    url.searchParams.append('q', query);
 
     let xhr = new XMLHttpRequest();
     xhr.open('GET', url);
     xhr.responseType = 'json';
     xhr.onload = function () {
-        if (this.status >= 200 && this.status < 300) {
-            renderRecords(this.response.records);
-            setPaginationInfo(this.response['_pagination']);
-            renderPaginationElement(this.response['_pagination']);
-        } else {
-            console.error('Server error:', this.status, this.statusText);
-        }
-    };
-    xhr.onerror = function () {
-        console.error('Network error');
+        suggestionList.innerHTML = '';
+        let searchField = document.querySelector('.search-field');
+        this.response.forEach(element => {
+            let suggestion = document.createElement('div');
+
+            suggestion.textContent = element;
+            suggestion.classList.add('search-suggestion-item');
+            suggestion.onclick = (event) => {
+                searchField.value = event.target.textContent;
+                getSuggesntions(searchField.value);
+            };
+
+            suggestionList.append(suggestion);
+        });
     };
     xhr.send();
 }
-
-function searchFormHandler(event) {
-    event.preventDefault();
-    let searchQuery = document.querySelector('.search-field').value.trim();
-    downloadData(1, searchQuery);
-}
-
-window.onload = function () {
-    downloadData();
-    document.querySelector('.pagination').addEventListener('click', pageBtnHandler);
-    document.querySelector('.per-page-btn').addEventListener('change', perPageBtnHandler);
-    document.querySelector('.search-form').addEventListener('submit', searchFormHandler);
-};
 
 function perPageBtnHandler(event) {
     downloadData(1);
@@ -147,47 +159,26 @@ function pageBtnHandler(event) {
     }
 }
 
-function fetchAutocomplete(query) {
-    let url = new URL('http://cat-facts-api.std-900.ist.mospolytech.ru/autocomplete');
-    url.searchParams.set('q', query);
-
-    fetch(url)
-        .then(response => response.json())
-        .then(data => {
-            updateSuggestionsList(data);
-        })
-        .catch(error => console.error('Error fetching autocomplete suggestions:', error));
+function searchBtnHandler(event) {
+    let searchFiled = document.querySelector('.search-field');
+    downloadData(1, searchFiled.value);
+    getSuggesntions('');
 }
 
-function updateSuggestionsList(suggestions) {
-    let suggestionsList = document.querySelector('.suggestions');
-    suggestionsList.innerHTML = '';
-    suggestionsList.style.display = suggestions.length ? 'block' : 'none';
-
-    suggestions.forEach(suggestion => {
-        let li = document.createElement('li');
-        li.textContent = suggestion;
-        li.addEventListener('click', () => {
-            let searchField = document.querySelector('.search-field');
-            searchField.value = suggestion;
-            suggestionsList.style.display = 'none';
-            downloadData(1, suggestion);
-        });
-        suggestionsList.appendChild(li);
-    });
+function suggestionUpdateHandler(event) {
+    if (updateSuggestion != null) {
+        clearTimeout(updateSuggestion);
+    }
+    updateSuggestion = setTimeout(() => {
+        console.log(event.target.value);
+        getSuggesntions(event.target.value);
+    }, "500");
 }
 
-document.querySelector('.search-field').addEventListener('input', (event) => {
-    let query = event.target.value;
-    if (query.length > 0) {
-        fetchAutocomplete(query);
-    } else {
-        document.querySelector('.suggestions').style.display = 'none';
-    }
-});
-
-document.addEventListener('click', (event) => {
-    if (!event.target.matches('.search-field')) {
-        document.querySelector('.suggestions').style.display = 'none';
-    }
-});
+window.onload = function () {
+    downloadData();
+    document.querySelector('.pagination').onclick = pageBtnHandler;
+    document.querySelector('.per-page-btn').onchange = perPageBtnHandler;
+    document.querySelector('.search-btn').onclick = searchBtnHandler;
+    document.querySelector('.search-field').oninput = suggestionUpdateHandler;
+};
